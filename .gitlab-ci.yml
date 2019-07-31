@@ -1,0 +1,124 @@
+variables:
+  GIT_CLONE_PATH: $CI_BUILDS_DIR/$CI_CONCURRENT_ID/$CI_PROJECT_PATH
+stages:
+  - node-pakages
+  - create-platform
+  - fastlane-configuration
+  - keychain-certs
+  - update-version
+  - build
+  - distribute
+  - notify
+cache:
+  paths:
+    - node_modules/
+    - www/
+    - platforms/
+    - plugins/
+
+node pakages:
+  stage: node-pakages
+  script:
+    - echo "Installing npm packages"
+    - npm install
+  tags:
+    - mobile-ios-passman
+create platform ios:
+  stage: create-platform
+  script:
+    - echo "Creating ionic platform for iOS app"
+    - ionic cordova platform add ios
+  tags:
+    - mobile-ios-passman
+create platform android:
+  stage: create-platform
+  script:
+    - echo "Creating ionic platform for android app"
+    - ionic cordova platform add android
+  tags:
+    - mobile-ios-passman
+fastlane config ios:
+  stage: fastlane-configuration
+  script:
+    - echo "Configure fastlane for iOS app"
+    - mkdir -p platforms/ios/fastlane
+    - cp -r ci/ios/fastlane/* platforms/ios/fastlane/
+    - cp ci/Gemfile platforms/ios/
+  tags:
+    - mobile-ios-passman
+fastlane config android:
+  stage: fastlane-configuration
+  script:
+    - echo "Configure fastlane for Android app"
+    - mkdir -p platforms/android/fastlane
+    - cp -r ci/android/fastlane/* platforms/android/fastlane/
+  tags:
+    - mobile-ios-passman
+fastlane config plugins:
+  stage: fastlane-configuration
+  script: 
+    - echo "Installing required fastlane plugins"
+    - cd platforms/ios
+    - fastlane install_plugins
+  tags:
+    - mobile-ios-passman
+keychain certs:
+  stage: keychain-certs
+  script:
+    - echo "Installing keychain certificates"
+    - cd platforms/ios
+    - fastlane certificates refresh_certificates:false 
+  tags:
+    - mobile-ios-passman
+# update version:
+#   stage: update-version
+#   script:
+#     - echo "Update application version"
+#   tags:
+#     - mobile-build
+build ios:
+  stage: build
+  script:
+    - echo "Building ios application"
+    - cd platforms/ios
+    - fastlane beta
+  artifacts:
+    paths:
+    - ./output/PassMan.ipa
+    - ./output/PassMan.app.dSYM.zip
+  tags:
+    - mobile-ios-passman
+build android:
+  stage: build
+  script:
+    - echo "Building android application"
+    - ionic cordova build android
+    # - cd platforms/android
+    # - fastlane beta
+  artifacts:
+    paths:
+    - ./platforms/android/build/outputs/apk/android-debug.apk
+  tags:
+    - mobile-ios-passman
+distribute ios:
+  stage: distribute
+  script:
+    - echo "Distribute application"
+    - cd platforms/ios
+    - fastlane distribute
+  tags:
+    - mobile-ios-passman
+distribute android:
+  stage: distribute
+  script:
+    - echo "Distribute application"
+    - cd platforms/android
+    - fastlane distribute
+  tags:
+    - mobile-ios-passman
+# notify_build_status:
+#   stage: notify
+#   script:
+#     - echo "Notify application build status"
+#   tags:
+#     - mobile-build
